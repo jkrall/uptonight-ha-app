@@ -9,6 +9,6 @@ arch:
 init: false
 options: {}
 schema: {}
-image: "mawinkler/uptonight"
+image: "mawinkler/uptonight:latest"
 map:
   - addon_config:rw
