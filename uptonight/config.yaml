@@ -1,0 +1,14 @@
+name: "UpTonight"
+version: "0.1.0"
+slug: "uptonight"
+description: "Calculates the best observable deep sky objects for your location."
+arch:
+  - amd64
+  - aarch64
+  - armv7
+init: false
+options: {}
+schema: {}
+image: "mawinkler/uptonight:latest"
+map:
+  - addon_config:rw
