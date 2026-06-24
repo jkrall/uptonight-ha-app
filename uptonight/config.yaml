@@ -7,8 +7,35 @@ arch:
   - aarch64
   - armv7
 init: false
-options: {}
-schema: {}
-image: "mawinkler/uptonight:latest"
+options:
+  longitude: ""
+  latitude: ""
+  elevation: ""
+  timezone: ""
+  observatory_name: ""
+  pressure: ""
+  relative_humidity: ""
+  temperature: ""
+  observation_date: ""
+  target_list: ""
+  type_filter: ""
+  output_dir: ""
+  live_mode: ""
+  target: ""
+schema:
+  longitude: "str?"
+  latitude: "str?"
+  elevation: "str?"
+  timezone: "str?"
+  observatory_name: "str?"
+  pressure: "str?"
+  relative_humidity: "str?"
+  temperature: "str?"
+  observation_date: "str?"
+  target_list: "str?"
+  type_filter: "str?"
+  output_dir: "str?"
+  live_mode: "str?"
+  target: "str?"
 map:
   - addon_config:rw
