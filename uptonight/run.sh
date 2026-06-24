@@ -11,7 +11,7 @@ export_option() {
         return 0
     fi
 
-    value="$(jq -er --arg key "$option_key" '.[$key] // empty | if type == "string" then . elif type == "boolean" then tostring elif type == "number" then tostring else empty end' "$OPTIONS_FILE" 2>/dev/null || true)"
+value="$(jq -r --arg key "$option_key" '.[$key] | select(. != null) | if type == "string" then . elif type == "boolean" then tostring elif type == "number" then tostring else empty end' "$OPTIONS_FILE")"
 
     if [ -n "$value" ]; then
         export "$env_key=$value"
