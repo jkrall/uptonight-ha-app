@@ -19,7 +19,7 @@ options:
   observation_date: ""
   target_list: ""
   type_filter: ""
-  output_dir: "/config/out"
+  output_dir: "/homeassistant/www/uptonight"
   live_mode: ""
   target: ""
 schema:
@@ -38,4 +38,4 @@ schema:
   live_mode: "str?"
   target: "str?"
 map:
-  - addon_config:rw
+  - homeassistant_config:rw

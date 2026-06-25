@@ -6,6 +6,7 @@ settings. Leave a setting blank to let UpTonight use its built-in default or a
 mounted `config.yaml`; non-empty settings are exported to the upstream app as
 the matching environment variables.
 
-Generated files are written to `/config/out` by default, which is the add-on's
-Home Assistant-mounted configuration directory. The entrypoint creates the
-configured `output_dir` before starting UpTonight.
+Generated files are written to `/homeassistant/www/uptonight` by default, which
+maps to Home Assistant's `www/uptonight` directory. The entrypoint creates the
+configured `output_dir` before starting UpTonight. Files in this directory are
+served by Home Assistant under `/local/uptonight/`.
