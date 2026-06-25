@@ -37,4 +37,8 @@ live_mode:LIVE_MODE
 target:TARGET
 EOF
 
+if [ -n "${OUTPUT_DIR:-}" ]; then
+    mkdir -p "$OUTPUT_DIR"
+fi
+
 exec /app/main "$@"
