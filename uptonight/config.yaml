@@ -19,7 +19,7 @@ options:
   observation_date: ""
   target_list: ""
   type_filter: ""
-  output_dir: ""
+  output_dir: "/config/out"
   live_mode: ""
   target: ""
 schema:
