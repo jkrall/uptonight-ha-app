@@ -1,5 +1,5 @@
 name: "UpTonight"
-version: "0.1.1"
+version: "0.1.2"
 slug: "uptonight"
 description: "Calculates the best observable deep sky objects for your location."
 arch:
