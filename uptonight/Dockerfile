@@ -34,7 +34,9 @@ FROM ubuntu:noble AS runtime-image
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends jq \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        jq \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build-image /app/dist/main /app/main
