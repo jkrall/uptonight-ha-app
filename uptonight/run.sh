@@ -44,6 +44,7 @@ write_config_file() {
     fi
 
     tmp_file="$(mktemp)"
+    trap 'rm -f "$tmp_file"' EXIT
 
     {
         if jq -e '.features | type == "array"' "$OPTIONS_FILE" >/dev/null; then
@@ -61,8 +62,10 @@ write_config_file() {
         if [ -n "$horizon" ]; then
             printf '%s\n' "$horizon" | awk '
                 {
+                    if ($0 ~ /^[[:space:]-]/) {
+                        next
+                    }
                     line = $0
-                    sub(/^[[:space:]]*-[[:space:]]*/, "", line)
                     sub(/^[[:space:]]*/, "", line)
                     if (line == "" || line ~ /^#/) {
                         next
