@@ -94,6 +94,8 @@ write_config_file() {
     else
         rm -f "$tmp_file"
     fi
+
+    trap - EXIT
 }
 
 write_config_file
