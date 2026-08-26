@@ -49,7 +49,7 @@ write_config_file() {
         if jq -e '.features | type == "array"' "$OPTIONS_FILE" >/dev/null; then
             echo "features:"
             for feature in horizon objects bodies comets alttime; do
-                if jq -e --arg feature "$feature" '.features | index($feature) != null' "$OPTIONS_FILE" >/dev/null; then
+                if jq -e --arg feature "$feature" '.features | contains([$feature])' "$OPTIONS_FILE" >/dev/null; then
                     echo "  $feature: true"
                 else
                     echo "  $feature: false"
@@ -59,6 +59,24 @@ write_config_file() {
 
         horizon="$(jq -r '.horizon | select(type == "string" and . != "") // empty' "$OPTIONS_FILE")"
         if [ -n "$horizon" ]; then
+            printf '%s\n' "$horizon" | awk '
+                {
+                    line = $0
+                    sub(/^[[:space:]]*-[[:space:]]*/, "", line)
+                    sub(/^[[:space:]]*/, "", line)
+                    if (line == "" || line ~ /^#/) {
+                        next
+                    }
+                    if (line ~ /^(horizon|step_size|anchor_points|alt|az):([[:space:]]|$)/) {
+                        next
+                    }
+                    exit 1
+                }
+            ' || {
+                echo "Invalid horizon YAML: only horizon, step_size, anchor_points, alt, and az keys are supported" >&2
+                exit 1
+            }
+
             if printf '%s\n' "$horizon" | grep -Eq '^[[:space:]]*horizon:'; then
                 printf '%s\n' "$horizon"
             else

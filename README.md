@@ -18,7 +18,7 @@ enable those optional features, or remove entries to disable them.
 
 To configure a custom horizon, paste the UpTonight horizon YAML into the
 `horizon` option. You can paste either the value under the upstream `horizon:`
-key:
+key, using only `step_size`, `anchor_points`, `alt`, and `az`:
 
 ```yaml
 step_size: 5
