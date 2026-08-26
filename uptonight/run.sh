@@ -58,33 +58,68 @@ write_config_file() {
             done
         fi
 
-        horizon="$(jq -r '.horizon | select(type == "string" and . != "") // empty' "$OPTIONS_FILE")"
-        if [ -n "$horizon" ]; then
-            printf '%s\n' "$horizon" | awk '
-                {
-                    if ($0 ~ /^[[:space:]]/) {
-                        next
+        horizon_type="$(jq -r '.horizon | if . == null then "null" else type end' "$OPTIONS_FILE")"
+        if [ "$horizon_type" = "string" ]; then
+            horizon="$(jq -r '.horizon | select(. != "") // empty' "$OPTIONS_FILE")"
+            if [ -n "$horizon" ]; then
+                printf '%s\n' "$horizon" | awk '
+                    {
+                        if ($0 ~ /^[[:space:]]/) {
+                            next
+                        }
+                        line = $0
+                        sub(/^[[:space:]]*/, "", line)
+                        if (line == "" || line ~ /^#/) {
+                            next
+                        }
+                        if (line ~ /^(horizon|step_size|anchor_points|alt|az):([[:space:]]|$)/) {
+                            next
+                        }
+                        exit 1
                     }
-                    line = $0
-                    sub(/^[[:space:]]*/, "", line)
-                    if (line == "" || line ~ /^#/) {
-                        next
-                    }
-                    if (line ~ /^(horizon|step_size|anchor_points|alt|az):([[:space:]]|$)/) {
-                        next
-                    }
+                ' || {
+                    echo "Invalid horizon YAML: only horizon, step_size, anchor_points, alt, and az keys are supported" >&2
                     exit 1
                 }
-            ' || {
-                echo "Invalid horizon YAML: only horizon, step_size, anchor_points, alt, and az keys are supported" >&2
+
+                if printf '%s\n' "$horizon" | grep -Eq '^[[:space:]]*horizon:'; then
+                    printf '%s\n' "$horizon"
+                else
+                    echo "horizon:"
+                    printf '%s\n' "$horizon" | sed 's/^/  /'
+                fi
+            fi
+        elif [ "$horizon_type" = "object" ] && jq -e '.horizon | length > 0' "$OPTIONS_FILE" >/dev/null; then
+            jq -e '
+                .horizon as $h
+                | (($h | keys) - ["step_size", "anchor_points"] | length == 0)
+                and (($h.step_size == null) or ($h.step_size | type == "number"))
+                and (
+                    ($h.anchor_points == null)
+                    or (
+                        ($h.anchor_points | type == "array")
+                        and all($h.anchor_points[];
+                            (type == "object")
+                            and ((keys - ["az", "alt"]) | length == 0)
+                            and has("az")
+                            and has("alt")
+                            and (.az | type == "number")
+                            and (.alt | type == "number")
+                        )
+                    )
+                )
+            ' "$OPTIONS_FILE" >/dev/null || {
+                echo "Invalid horizon config: horizon must only contain step_size (number) and anchor_points (list of objects that each include numeric az and alt)" >&2
                 exit 1
             }
 
-            if printf '%s\n' "$horizon" | grep -Eq '^[[:space:]]*horizon:'; then
-                printf '%s\n' "$horizon"
-            else
-                echo "horizon:"
-                printf '%s\n' "$horizon" | sed 's/^/  /'
+            echo "horizon:"
+            if jq -e '.horizon | has("step_size")' "$OPTIONS_FILE" >/dev/null; then
+                jq -r '.horizon.step_size | "  step_size: \(.)"' "$OPTIONS_FILE"
+            fi
+            if jq -e '.horizon.anchor_points | type == "array" and length > 0' "$OPTIONS_FILE" >/dev/null; then
+                echo "  anchor_points:"
+                jq -r '.horizon.anchor_points[] | "    - az: \(.az)\n      alt: \(.alt)"' "$OPTIONS_FILE"
             fi
         fi
     } > "$tmp_file"
