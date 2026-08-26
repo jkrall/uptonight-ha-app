@@ -62,7 +62,7 @@ write_config_file() {
         if [ -n "$horizon" ]; then
             printf '%s\n' "$horizon" | awk '
                 {
-                    if ($0 ~ /^[[:space:]-]/) {
+                    if ($0 ~ /^[[:space:]]/) {
                         next
                     }
                     line = $0
