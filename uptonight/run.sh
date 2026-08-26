@@ -109,7 +109,7 @@ write_config_file() {
                     )
                 )
             ' "$OPTIONS_FILE" >/dev/null || {
-                echo "Invalid horizon config: horizon must only contain step_size (number) and anchor_points (list of objects with numeric az and alt)" >&2
+                echo "Invalid horizon config: horizon must only contain step_size (number) and anchor_points (list of objects that each include numeric az and alt)" >&2
                 exit 1
             }
 
