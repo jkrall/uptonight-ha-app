@@ -2,6 +2,7 @@
 set -eu
 
 OPTIONS_FILE="${UPTONIGHT_OPTIONS_FILE:-/data/options.json}"
+CONFIG_FILE="${UPTONIGHT_CONFIG_FILE:-/app/config.yaml}"
 
 export_option() {
     option_key="$1"
@@ -36,6 +37,68 @@ output_dir:OUTPUT_DIR
 live_mode:LIVE_MODE
 target:TARGET
 EOF
+
+write_config_file() {
+    if [ ! -f "$OPTIONS_FILE" ]; then
+        return 0
+    fi
+
+    tmp_file="$(mktemp)"
+    trap 'rm -f "$tmp_file"' EXIT
+
+    {
+        if jq -e '.features | type == "array"' "$OPTIONS_FILE" >/dev/null; then
+            echo "features:"
+            for feature in horizon objects bodies comets alttime; do
+                if jq -e --arg feature "$feature" '.features | contains([$feature])' "$OPTIONS_FILE" >/dev/null; then
+                    echo "  $feature: true"
+                else
+                    echo "  $feature: false"
+                fi
+            done
+        fi
+
+        horizon="$(jq -r '.horizon | select(type == "string" and . != "") // empty' "$OPTIONS_FILE")"
+        if [ -n "$horizon" ]; then
+            printf '%s\n' "$horizon" | awk '
+                {
+                    if ($0 ~ /^[[:space:]]/) {
+                        next
+                    }
+                    line = $0
+                    sub(/^[[:space:]]*/, "", line)
+                    if (line == "" || line ~ /^#/) {
+                        next
+                    }
+                    if (line ~ /^(horizon|step_size|anchor_points|alt|az):([[:space:]]|$)/) {
+                        next
+                    }
+                    exit 1
+                }
+            ' || {
+                echo "Invalid horizon YAML: only horizon, step_size, anchor_points, alt, and az keys are supported" >&2
+                exit 1
+            }
+
+            if printf '%s\n' "$horizon" | grep -Eq '^[[:space:]]*horizon:'; then
+                printf '%s\n' "$horizon"
+            else
+                echo "horizon:"
+                printf '%s\n' "$horizon" | sed 's/^/  /'
+            fi
+        fi
+    } > "$tmp_file"
+
+    if [ -s "$tmp_file" ]; then
+        mv "$tmp_file" "$CONFIG_FILE"
+    else
+        rm -f "$tmp_file"
+    fi
+
+    trap - EXIT
+}
+
+write_config_file
 
 if [ -n "${OUTPUT_DIR:-}" ]; then
     mkdir -p "$OUTPUT_DIR"
