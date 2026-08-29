@@ -1,5 +1,5 @@
 name: "UpTonight"
-version: "0.1.5"
+version: "0.1.6"
 slug: "uptonight"
 description: "Calculates the best observable deep sky objects for your location."
 arch:
@@ -25,7 +25,7 @@ options:
   features:
     - objects
     - bodies
-  horizon: {}
+  horizon: ""
 schema:
   longitude: "str?"
   latitude: "str?"
@@ -43,6 +43,6 @@ schema:
   target: "str?"
   features:
     - "list(horizon|objects|bodies|comets|alttime)?"
-  horizon: "dict?"
+  horizon: "str?"
 map:
   - homeassistant_config:rw
