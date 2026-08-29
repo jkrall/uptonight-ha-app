@@ -19,12 +19,15 @@ value="$(jq -r --arg key "$option_key" '.[$key] | select(. != null) | if type ==
     fi
 }
 
+# Settings UpTonight reads from the environment. Everything else is written to
+# the generated config file below. Elevation is deliberately not exported:
+# UpTonight casts ELEVATION with int(), which fails on fractional metres, so it
+# goes through the config file where floats are accepted.
 while IFS=: read -r option_key env_key; do
     export_option "$option_key" "$env_key"
 done <<'EOF'
 longitude:LONGITUDE
 latitude:LATITUDE
-elevation:ELEVATION
 timezone:TIMEZONE
 observatory_name:OBSERVATORY_NAME
 pressure:PRESSURE
@@ -34,10 +37,14 @@ observation_date:OBSERVATION_DATE
 target_list:TARGET_LIST
 type_filter:TYPE_FILTER
 output_dir:OUTPUT_DIR
-live_mode:LIVE_MODE
 target:TARGET
+prefix:PREFIX
 EOF
 
+# UpTonight loads its config file with yaml.safe_load(), and YAML is a superset
+# of JSON, so the generated config is written as JSON straight from the add-on
+# options. Sections that must fall back to UpTonight's own defaults (an unset
+# elevation, an unconfigured broker, an empty horizon) are omitted entirely.
 write_config_file() {
     if [ ! -f "$OPTIONS_FILE" ]; then
         return 0
@@ -46,90 +53,42 @@ write_config_file() {
     tmp_file="$(mktemp)"
     trap 'rm -f "$tmp_file"' EXIT
 
-    {
-        if jq -e '.features | type == "array"' "$OPTIONS_FILE" >/dev/null; then
-            echo "features:"
-            for feature in horizon objects bodies comets alttime; do
-                if jq -e --arg feature "$feature" '.features | contains([$feature])' "$OPTIONS_FILE" >/dev/null; then
-                    echo "  $feature: true"
-                else
-                    echo "  $feature: false"
-                fi
-            done
-        fi
+    jq '
+        . as $o
+        | ($o.features // []) as $enabled
+        | (["horizon", "objects", "bodies", "comets", "alttime"]
+            | map(. as $feature | {key: $feature, value: ($enabled | index($feature) != null)})
+            | from_entries) as $features
+        | (($o.elevation // "") | tostring) as $raw_elevation
+        | (if ($raw_elevation | test("^-?[0-9]+([.][0-9]+)?$"))
+            then ($raw_elevation | tonumber)
+            else null end) as $elevation
+        | ($o.horizon.anchor_points // []) as $anchor_points
+        | ($o.mqtt // {}) as $mqtt
+        | {features: $features}
+            + (if ($o.layout // "") != "" then {layout: $o.layout} else {} end)
+            + (if $o.output_datestamp != null then {output_datestamp: $o.output_datestamp} else {} end)
+            + (if ($o.constraints // {}) != {} then {constraints: $o.constraints} else {} end)
+            + (if ($o.colors // {}) != {} then {colors: $o.colors} else {} end)
+            + (if ($o.live // {}) != {} then {live: $o.live} else {} end)
+            + (if $elevation != null then {location: {elevation: $elevation}} else {} end)
+            + (if (($o.bucket_list // []) | length) > 0 then {bucket_list: $o.bucket_list} else {} end)
+            + (if (($o.done_list // []) | length) > 0 then {done_list: $o.done_list} else {} end)
+            + (if (($o.custom_targets // []) | length) > 0 then {custom_targets: $o.custom_targets} else {} end)
+            + (if ($mqtt.host // "") != ""
+                then {mqtt: ($mqtt | with_entries(select(.value != null and .value != "")))}
+                else {} end)
+            + (if ($anchor_points | length) >= 2
+                then {horizon: {step_size: ($o.horizon.step_size // 5), anchor_points: $anchor_points}}
+                else {} end)
+    ' "$OPTIONS_FILE" > "$tmp_file"
 
-        horizon_type="$(jq -r '.horizon | if . == null then "null" else type end' "$OPTIONS_FILE")"
-        if [ "$horizon_type" = "string" ]; then
-            horizon="$(jq -r '.horizon | select(. != "") // empty' "$OPTIONS_FILE")"
-            if [ -n "$horizon" ]; then
-                printf '%s\n' "$horizon" | awk '
-                    {
-                        if ($0 ~ /^[[:space:]]/) {
-                            next
-                        }
-                        line = $0
-                        sub(/^[[:space:]]*/, "", line)
-                        if (line == "" || line ~ /^#/) {
-                            next
-                        }
-                        if (line ~ /^(horizon|step_size|anchor_points|alt|az):([[:space:]]|$)/) {
-                            next
-                        }
-                        exit 1
-                    }
-                ' || {
-                    echo "Invalid horizon YAML: only horizon, step_size, anchor_points, alt, and az keys are supported" >&2
-                    exit 1
-                }
-
-                if printf '%s\n' "$horizon" | grep -Eq '^[[:space:]]*horizon:'; then
-                    printf '%s\n' "$horizon"
-                else
-                    echo "horizon:"
-                    printf '%s\n' "$horizon" | sed 's/^/  /'
-                fi
-            fi
-        elif [ "$horizon_type" = "object" ] && jq -e '.horizon | length > 0' "$OPTIONS_FILE" >/dev/null; then
-            jq -e '
-                .horizon as $h
-                | (($h | keys) - ["step_size", "anchor_points"] | length == 0)
-                and (($h.step_size == null) or ($h.step_size | type == "number"))
-                and (
-                    ($h.anchor_points == null)
-                    or (
-                        ($h.anchor_points | type == "array")
-                        and all($h.anchor_points[];
-                            (type == "object")
-                            and ((keys - ["az", "alt"]) | length == 0)
-                            and has("az")
-                            and has("alt")
-                            and (.az | type == "number")
-                            and (.alt | type == "number")
-                        )
-                    )
-                )
-            ' "$OPTIONS_FILE" >/dev/null || {
-                echo "Invalid horizon config: horizon must only contain step_size (number) and anchor_points (list of objects that each include numeric az and alt)" >&2
-                exit 1
-            }
-
-            echo "horizon:"
-            if jq -e '.horizon | has("step_size")' "$OPTIONS_FILE" >/dev/null; then
-                jq -r '.horizon.step_size | "  step_size: \(.)"' "$OPTIONS_FILE"
-            fi
-            if jq -e '.horizon.anchor_points | type == "array" and length > 0' "$OPTIONS_FILE" >/dev/null; then
-                echo "  anchor_points:"
-                jq -r '.horizon.anchor_points[] | "    - az: \(.az)\n      alt: \(.alt)"' "$OPTIONS_FILE"
-            fi
-        fi
-    } > "$tmp_file"
-
-    if [ -s "$tmp_file" ]; then
-        mv "$tmp_file" "$CONFIG_FILE"
-    else
-        rm -f "$tmp_file"
+    if jq -e '((.features // []) | index("horizon") != null)
+            and (((.horizon.anchor_points // []) | length) < 2)' "$OPTIONS_FILE" >/dev/null; then
+        echo "The horizon feature is enabled but fewer than two anchor points are configured; no horizon will be plotted" >&2
     fi
 
+    mv "$tmp_file" "$CONFIG_FILE"
     trap - EXIT
 }
 

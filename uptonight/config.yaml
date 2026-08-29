@@ -1,5 +1,5 @@
 name: "UpTonight"
-version: "0.1.7"
+version: "0.2.0"
 slug: "uptonight"
 description: "Calculates the best observable deep sky objects for your location."
 arch:
@@ -19,12 +19,46 @@ options:
   observation_date: ""
   target_list: ""
   type_filter: ""
-  output_dir: "/homeassistant/www/uptonight"
-  live_mode: ""
   target: ""
+  prefix: ""
+  output_dir: "/homeassistant/www/uptonight"
+  output_datestamp: false
+  layout: "landscape"
   features:
     - objects
     - bodies
+  live:
+    enabled: false
+    interval: 900
+  constraints:
+    altitude_constraint_min: 30
+    altitude_constraint_max: 80
+    airmass_constraint: 2
+    size_constraint_min: 10
+    size_constraint_max: 300
+    moon_separation_min: 45
+    moon_separation_use_illumination: true
+    fraction_of_time_observable_threshold: 0.5
+    max_number_within_threshold: 60
+    north_to_east_ccw: false
+  colors:
+    ticks: "#9C9C9C"
+    grid: "#9C9C9C"
+    axes: "#262626"
+    figure: "#1C1C1C"
+    legend: "#262626"
+    alttime: "#CC6666"
+    meridian: "#66CC66"
+    text: "#FFFFFF"
+  mqtt:
+    host: ""
+    port: 1883
+    user: ""
+    password: ""
+    clientid: "uptonight"
+  bucket_list: []
+  done_list: []
+  custom_targets: []
   horizon:
     step_size: 5
     anchor_points: []
@@ -40,11 +74,55 @@ schema:
   observation_date: "str?"
   target_list: "str?"
   type_filter: "str?"
-  output_dir: "str?"
-  live_mode: "str?"
   target: "str?"
+  prefix: "str?"
+  output_dir: "str?"
+  output_datestamp: "bool?"
+  layout: "list(landscape|portrait)?"
   features:
     - "list(horizon|objects|bodies|comets|alttime)?"
+  live:
+    enabled: "bool?"
+    interval: "int(60,)?"
+  constraints:
+    altitude_constraint_min: "float(0,90)?"
+    altitude_constraint_max: "float(0,90)?"
+    airmass_constraint: "float(1,)?"
+    size_constraint_min: "float(0,)?"
+    size_constraint_max: "float(0,)?"
+    moon_separation_min: "float(0,180)?"
+    moon_separation_use_illumination: "bool?"
+    fraction_of_time_observable_threshold: "float(0,1)?"
+    max_number_within_threshold: "int(1,)?"
+    north_to_east_ccw: "bool?"
+  colors:
+    ticks: "match(^#[0-9a-fA-F]{6}$)?"
+    grid: "match(^#[0-9a-fA-F]{6}$)?"
+    axes: "match(^#[0-9a-fA-F]{6}$)?"
+    figure: "match(^#[0-9a-fA-F]{6}$)?"
+    legend: "match(^#[0-9a-fA-F]{6}$)?"
+    alttime: "match(^#[0-9a-fA-F]{6}$)?"
+    meridian: "match(^#[0-9a-fA-F]{6}$)?"
+    text: "match(^#[0-9a-fA-F]{6}$)?"
+  mqtt:
+    host: "str?"
+    port: "port?"
+    user: "str?"
+    password: "password?"
+    clientid: "str?"
+  bucket_list:
+    - "str?"
+  done_list:
+    - "str?"
+  custom_targets:
+    - name: "str"
+      description: "str?"
+      type: "str?"
+      constellation: "str?"
+      size: "float(0,)?"
+      ra: "str"
+      dec: "str"
+      mag: "float?"
   horizon:
     step_size: "int(1,180)?"
     anchor_points:
