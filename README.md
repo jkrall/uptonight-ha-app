@@ -16,17 +16,27 @@ The UpTonight `features` settings are exposed as a Home Assistant list. The
 default enables `objects` and `bodies`; add `horizon`, `comets`, or `alttime` to
 enable those optional features, or remove entries to disable them.
 
-To configure a custom horizon, set the `horizon` option to the UpTonight horizon
-YAML using `step_size`, `anchor_points`, `alt`, and `az`:
+To configure a custom horizon, set the `horizon` option to a mapping with
+`step_size` and `anchor_points`; every anchor point needs numeric `az` and `alt`
+values. Anchor points should start at an azimuth of 0 and end at 360 so the
+whole sky is covered:
 
 ```yaml
-step_size: 5
-anchor_points:
-  - alt: 20
-    az: 0
-  - alt: 20
-    az: 360
+horizon:
+  step_size: 5
+  anchor_points:
+    - az: 0
+      alt: 20
+    - az: 180
+      alt: 15
+    - az: 360
+      alt: 20
 ```
+
+Leave `anchor_points` empty (`[]`) to skip the custom horizon. Earlier versions
+of this add-on took `horizon` as a YAML *string*; that form is no longer
+accepted, so an existing `horizon: ""` (or a quoted YAML block) has to be
+replaced with the mapping above before the settings will save.
 
 Generated files are written to `/homeassistant/www/uptonight` by default, which
 maps to Home Assistant's `www/uptonight` directory. The entrypoint creates the
