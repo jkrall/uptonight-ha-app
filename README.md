@@ -17,7 +17,7 @@ default enables `objects` and `bodies`; add `horizon`, `comets`, or `alttime` to
 enable those optional features, or remove entries to disable them.
 
 To configure a custom horizon, set the `horizon` option to the UpTonight horizon
-object using `step_size`, `anchor_points`, `alt`, and `az`:
+YAML using `step_size`, `anchor_points`, `alt`, and `az`:
 
 ```yaml
 step_size: 5
